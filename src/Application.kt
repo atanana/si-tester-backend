@@ -1,9 +1,6 @@
 package com.atanana
 
-import com.atanana.com.atanana.sitester.ClientMessage
-import com.atanana.com.atanana.sitester.GameManager
-import com.atanana.com.atanana.sitester.GameMiddleware
-import com.atanana.com.atanana.sitester.ServerMessage
+import com.atanana.com.atanana.sitester.*
 import io.ktor.application.*
 import io.ktor.routing.*
 import io.ktor.http.content.*
@@ -37,16 +34,18 @@ fun Application.module(testing: Boolean = false) {
         }
 
         webSocket("/ws") {
+            val helper = WsSafeHelper(this, this@module)
+
             for (message in gameMiddleware.getInitialMessages()) {
-                send(message)
+                helper.safeSend(message)
             }
 
             gameMiddleware.messages
-                .onEach(this::safeSend)
+                .onEach(helper::safeSend)
                 .launchIn(this)
 
             while (true) {
-                safe {
+                helper.safe {
                     val frame = incoming.receive()
                     val data = (frame as Frame.Text).readText()
                     val message = Json.decodeFromString<ClientMessage>(data)
@@ -56,23 +55,3 @@ fun Application.module(testing: Boolean = false) {
         }
     }
 }
-
-private suspend inline fun WebSocketSession.safe(block: () -> Unit) {
-    try {
-        block()
-    } catch (e: Exception) {
-        try {
-            val errorMessage = ServerMessage.Error(e.message ?: "Unknown error")
-            send(errorMessage)
-        } catch (e: Exception) {
-            // do nothing
-        }
-    }
-}
-
-private suspend fun WebSocketSession.send(message: ServerMessage) {
-    val data = Json.encodeToString(message)
-    send(Frame.Text(data))
-}
-
-private suspend fun WebSocketSession.safeSend(message: ServerMessage) = safe { send(message) }
