@@ -16,9 +16,9 @@ fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
-    install(io.ktor.websocket.WebSockets) {
-        pingPeriod = Duration.ofSeconds(15)
-        timeout = Duration.ofSeconds(15)
+    install(WebSockets) {
+        pingPeriod = Duration.ofSeconds(5)
+        timeout = Duration.ofSeconds(5)
         maxFrameSize = Long.MAX_VALUE
         masking = false
     }
@@ -29,7 +29,7 @@ fun Application.module(testing: Boolean = false) {
             defaultResource("static/index.html")
         }
 
-        webSocket("/myws/echo") {
+        webSocket("/ws") {
             send(Frame.Text("Hi from server"))
             while (true) {
                 val frame = incoming.receive()
