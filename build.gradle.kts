@@ -8,6 +8,7 @@ val kotlin_version: String by project
 plugins {
     application
     kotlin("jvm") version "1.4.32"
+    kotlin("plugin.serialization") version "1.4.32"
 }
 
 group = "com.atanana"
@@ -29,6 +30,7 @@ dependencies {
     implementation("io.ktor:ktor-server-core:$ktor_version")
     implementation("io.ktor:ktor-server-host-common:$ktor_version")
     implementation("io.ktor:ktor-websockets:$ktor_version")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.2")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
 }
 

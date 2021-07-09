@@ -1,14 +1,19 @@
 package com.atanana
 
+import com.atanana.com.atanana.sitester.ClientMessage
+import com.atanana.com.atanana.sitester.GameManager
+import com.atanana.com.atanana.sitester.GameMiddleware
+import com.atanana.com.atanana.sitester.ServerMessage
 import io.ktor.application.*
-import io.ktor.response.*
-import io.ktor.request.*
 import io.ktor.routing.*
-import io.ktor.http.*
-import io.ktor.content.*
 import io.ktor.http.content.*
 import io.ktor.websocket.*
 import io.ktor.http.cio.websocket.*
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.time.*
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -23,6 +28,8 @@ fun Application.module(testing: Boolean = false) {
         masking = false
     }
 
+    val gameMiddleware = GameMiddleware(GameManager())
+
     routing {
         static("") {
             resources("static")
@@ -30,14 +37,42 @@ fun Application.module(testing: Boolean = false) {
         }
 
         webSocket("/ws") {
-            send(Frame.Text("Hi from server"))
+            for (message in gameMiddleware.getInitialMessages()) {
+                send(message)
+            }
+
+            gameMiddleware.messages
+                .onEach(this::safeSend)
+                .launchIn(this)
+
             while (true) {
-                val frame = incoming.receive()
-                if (frame is Frame.Text) {
-                    send(Frame.Text("Client said: " + frame.readText()))
+                safe {
+                    val frame = incoming.receive()
+                    val data = (frame as Frame.Text).readText()
+                    val message = Json.decodeFromString<ClientMessage>(data)
+                    gameMiddleware.processMessage(message)
                 }
             }
         }
     }
 }
 
+private suspend inline fun WebSocketSession.safe(block: () -> Unit) {
+    try {
+        block()
+    } catch (e: Exception) {
+        try {
+            val errorMessage = ServerMessage.Error(e.message ?: "Unknown error")
+            send(errorMessage)
+        } catch (e: Exception) {
+            // do nothing
+        }
+    }
+}
+
+private suspend fun WebSocketSession.send(message: ServerMessage) {
+    val data = Json.encodeToString(message)
+    send(Frame.Text(data))
+}
+
+private suspend fun WebSocketSession.safeSend(message: ServerMessage) = safe { send(message) }
