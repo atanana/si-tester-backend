@@ -27,4 +27,10 @@ class GameMiddleware(private val gameManager: GameManager) {
             ServerMessage.QueueUpdate(gameManager.currentQueue)
         )
     }
+
+    suspend fun removePlayer(name: String) {
+        gameManager.removePlayer(name)
+        serverMessages.emit(ServerMessage.PlayersUpdate(gameManager.players))
+        serverMessages.emit(ServerMessage.QueueUpdate(gameManager.currentQueue))
+    }
 }

@@ -9,7 +9,6 @@ import io.ktor.http.cio.websocket.*
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.*
 
@@ -44,12 +43,24 @@ fun Application.module(testing: Boolean = false) {
                 .onEach(helper::safeSend)
                 .launchIn(this)
 
-            while (true) {
-                helper.safe {
-                    val frame = incoming.receive()
-                    val data = (frame as Frame.Text).readText()
-                    val message = Json.decodeFromString<ClientMessage>(data)
-                    gameMiddleware.processMessage(message)
+            var currentName: String? = null
+
+            try {
+                for (frame in incoming) {
+                    helper.safe {
+                        val data = (frame as Frame.Text).readText()
+                        val message = Json.decodeFromString<ClientMessage>(data)
+
+                        if (currentName == null) {
+                            currentName = message.name
+                        }
+
+                        gameMiddleware.processMessage(message)
+                    }
+                }
+            } finally {
+                currentName?.let {
+                    gameMiddleware.removePlayer(it)
                 }
             }
         }
