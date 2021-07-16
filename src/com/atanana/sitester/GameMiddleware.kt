@@ -11,12 +11,19 @@ class GameMiddleware(private val gameManager: GameManager) {
     suspend fun processMessage(message: ClientMessage) {
         when (message.type) {
             "ACTION" -> {
-                gameManager.onPlayerAction(message.name)
-                serverMessages.emit(ServerMessage.QueueUpdate(gameManager.currentQueue))
+                if (gameManager.onPlayerAction(message.name)) {
+                    updateQueue()
+                }
             }
             "INTRODUCE" -> {
-                gameManager.addPlayer(message.name)
-                serverMessages.emit(ServerMessage.PlayersUpdate(gameManager.players))
+                if (gameManager.addPlayer(message.name)) {
+                    updatePlayers()
+                }
+            }
+            "MAKE_OWNER" -> {
+                if (gameManager.changeOwner(message.name)) {
+                    updatePlayers()
+                }
             }
         }
     }
@@ -30,7 +37,15 @@ class GameMiddleware(private val gameManager: GameManager) {
 
     suspend fun removePlayer(name: String) {
         gameManager.removePlayer(name)
-        serverMessages.emit(ServerMessage.PlayersUpdate(gameManager.players))
+        updatePlayers()
+        updateQueue()
+    }
+
+    private suspend fun updateQueue() {
         serverMessages.emit(ServerMessage.QueueUpdate(gameManager.currentQueue))
+    }
+
+    private suspend fun updatePlayers() {
+        serverMessages.emit(ServerMessage.PlayersUpdate(gameManager.players))
     }
 }

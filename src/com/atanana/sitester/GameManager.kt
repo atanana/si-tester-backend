@@ -2,50 +2,60 @@ package com.atanana.com.atanana.sitester
 
 class GameManager {
 
-    var players = emptyList<Player>()
-        private set
+    private var playersMap = emptyMap<String, Player>()
+
+    val players: List<Player>
+        get() = playersMap.values.toList()
 
     var currentQueue = emptyList<String>()
         private set
 
+    private var owner: String? = null
+
     @Synchronized
     fun addPlayer(name: String): Boolean {
-        return if (players.any { it.name == name }) {
+        return if (playersMap.containsKey(name)) {
             false
         } else {
-            players = players + Player(name)
+            playersMap = playersMap + (name to Player(name, isOwner = owner == name))
             true
         }
     }
 
     @Synchronized
     fun removePlayer(name: String) {
-        players = players.filterNot { it.name == name }
+        playersMap = playersMap - name
         currentQueue = currentQueue - name
     }
 
     @Synchronized
-    fun changeOwner(ownerName: String) {
-        players = players.map { player ->
+    fun changeOwner(ownerName: String): Boolean {
+        playersMap = playersMap.mapValues { (_, player) ->
             player.copy(isOwner = player.name == ownerName)
         }
+
+        val result = ownerName != owner
+        owner = ownerName
+        return result
     }
 
     @Synchronized
-    fun resetQueue() {
-        currentQueue = emptyList()
-    }
-
-    @Synchronized
-    fun onPlayerAction(name: String) {
-        if (!currentQueue.contains(name)) {
-            currentQueue = currentQueue + name
+    fun onPlayerAction(name: String): Boolean {
+        val player = playersMap[name] ?: return false
+        return if (player.isOwner) {
+            if (currentQueue.isEmpty()) {
+                false
+            } else {
+                currentQueue = emptyList()
+                true
+            }
+        } else {
+            if (!currentQueue.contains(name)) {
+                currentQueue = currentQueue + name
+                true
+            } else {
+                false
+            }
         }
-    }
-
-    @Synchronized
-    fun resetGame() {
-        players = emptyList()
-        currentQueue = emptyList()
     }
 }
