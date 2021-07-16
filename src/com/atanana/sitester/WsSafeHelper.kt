@@ -8,7 +8,7 @@ import kotlinx.serialization.json.Json
 class WsSafeHelper(private val session: WebSocketSession, application: Application) {
     private val log = application.environment.log
 
-    suspend fun send(message: ServerMessage) {
+    private suspend fun send(message: ServerMessage) {
         val data = Json.encodeToString(message)
         session.send(Frame.Text(data))
     }
