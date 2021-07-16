@@ -7,12 +7,12 @@ val kotlin_version: String by project
 
 plugins {
     application
-    kotlin("jvm") version "1.4.32"
-    kotlin("plugin.serialization") version "1.4.32"
+    kotlin("jvm") version "1.5.21"
+    kotlin("plugin.serialization") version "1.5.21"
 }
 
 group = "com.atanana"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 
 application {
     mainClassName = "io.ktor.server.netty.EngineMain"
